@@ -14,8 +14,15 @@ type Message struct {
 }
 
 type Conversation struct {
-	Id       string    `json:"id"`
-	Messages []Message `json:"messages"`
+	Id       string       `json:"id"`
+	Messages []Message    `json:"messages"`
+	Sensors  []SensorData `json:"sensors"`
+}
+
+type SensorData struct {
+	Type      string      `json:"type"`
+	Timestamp time.Time   `json:"timestamp"`
+	Value     interface{} `json:"value"`
 }
 
 type Chatbot struct {
@@ -39,6 +46,20 @@ func (c *Chatbot) GetConversation(id string) (*Conversation, error) {
 }
 
 func (c *Chatbot) Sensor(s handlers.Socket, req map[string]interface{}) error {
+	var info struct {
+		SensorData     `json:",inline"`
+		ConversationId string `json:"conversation_id"`
+		Echo           bool
+	}
+	util.ToStruct(req, &info)
+	conv, err := c.GetConversation(info.ConversationId)
+	if err != nil {
+		return err
+	}
+	conv.Sensors = append(conv.Sensors, info.SensorData)
+	if info.Echo {
+		return s.Reply("got_sensor", req)
+	}
 	return nil
 }
 
