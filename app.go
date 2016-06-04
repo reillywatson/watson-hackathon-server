@@ -57,7 +57,7 @@ func reply(s Socket, msgType string, info map[string]interface{}) error {
 }
 
 func helloworld(w http.ResponseWriter, req *http.Request) {
-	w.Write([]byte("hello world"))
+	w.Write([]byte("Hello world!\n"))
 }
 
 func handleWs(w http.ResponseWriter, req *http.Request) {
@@ -89,9 +89,16 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Panicf("Panic: %v\n", r)
+		}
+	}()
 	var port string
 	if port = os.Getenv("PORT"); len(port) == 0 {
-		port = DEFAULT_PORT
+		if port = os.Getenv("VCAP_APP_PORT"); len(port) == 0 {
+			port = DEFAULT_PORT
+		}
 	}
 	bot := &Chatbot{}
 	addHandler("chatbot_send", bot.GotMessage)
