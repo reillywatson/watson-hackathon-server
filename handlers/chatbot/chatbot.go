@@ -12,6 +12,7 @@ func (c *Chatbot) GotMessage(s handlers.Socket, info map[string]interface{}) err
 	msg := "hello world!"
 	response := map[string]interface{}{
 		"message": msg,
+		"last":    info["message"],
 	}
 	return handlers.Reply(s, "chatbot_receive", response)
 }
