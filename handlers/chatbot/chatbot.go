@@ -11,6 +11,7 @@ import (
 
 const SenderUser = "user"
 const SenderBot = "bot"
+const MaxDatapoints = 50000
 
 type Message struct {
 	Id        string    `json:"id"`
@@ -198,9 +199,12 @@ func (c *Chatbot) Sensor(s handlers.Socket, req map[string]interface{}) error {
 	if info.Echo {
 		return s.Reply("got_sensor", req)
 	}
+	if len(conv.Sensors) > MaxDatapoints {
+		conv.Sensors = conv.Sensors[MaxDatapoints:]
+	}
 	for i, learner := range learners {
 		state := learner.Learn(conv.Sensors)
-		if len(conv.LearnerStates) < i {
+		if len(conv.LearnerStates) <= i {
 			conv.LearnerStates = append(conv.LearnerStates, state)
 		}
 		if state != conv.LearnerStates[i] {
