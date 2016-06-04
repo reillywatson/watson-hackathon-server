@@ -95,11 +95,8 @@ func main() {
 	}
 	bot := &Chatbot{}
 	addHandler("chatbot_send", bot.GotMessage)
-
 	http.HandleFunc("/ws", handleWs)
 	http.HandleFunc("/", helloworld)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
 	log.Printf("Starting app on port %+v\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
