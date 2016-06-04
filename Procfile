@@ -1,1 +1,1 @@
-web: gohackathon
+web: goworkout
