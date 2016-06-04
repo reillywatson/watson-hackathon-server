@@ -1,1 +1,1 @@
-web: gohelloworld
+web: gohackathon
