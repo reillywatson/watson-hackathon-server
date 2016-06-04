@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -15,11 +14,6 @@ import (
 const (
 	DEFAULT_PORT = "8080"
 )
-
-var index = template.Must(template.ParseFiles(
-	"templates/_base.html",
-	"templates/index.html",
-))
 
 const pongWait = time.Second * 60
 
@@ -63,7 +57,7 @@ func reply(s Socket, msgType string, info map[string]interface{}) error {
 }
 
 func helloworld(w http.ResponseWriter, req *http.Request) {
-	index.Execute(w, nil)
+	w.Write([]byte("hello world"))
 }
 
 func handleWs(w http.ResponseWriter, req *http.Request) {
