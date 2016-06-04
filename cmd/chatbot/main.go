@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/reillywatson/watson-hackathon-server/handlers"
-	"github.com/reillywatson/watson-hackathon-server/handlers/chatbot"
+	_ "github.com/reillywatson/watson-hackathon-server/handlers/chatbot"
 	"log"
 	"net/http"
 	"os"
@@ -33,6 +33,14 @@ func (s *WSSocket) Send(msg interface{}) error {
 	return (*websocket.Conn)(s).WriteJSON(msg)
 }
 
+func (s *WSSocket) Reply(msgType string, info map[string]interface{}) error {
+	return s.Send(map[string]interface{}{"message_type": msgType, "info": info})
+}
+
+func (s *WSSocket) Error(msg string) error {
+	return s.Reply("error", map[string]interface{}{"msg": msg})
+}
+
 type request struct {
 	Info        map[string]interface{} `json:"info"`
 	MessageType string                 `json:"message_type"`
@@ -47,6 +55,11 @@ func helloworld(w http.ResponseWriter, req *http.Request) {
 }
 
 func handleWs(w http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic: %v\n", r)
+		}
+	}()
 	ws, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -61,9 +74,10 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 	for {
 		var message request
 		err = ws.ReadJSON(&message)
+		fmt.Println(message)
 		if err != nil {
 			fmt.Println("socket err:", err)
-			break
+			return
 		}
 		handlers.CallHandler(socket, message.MessageType, message.Info)
 	}
@@ -82,8 +96,6 @@ func main() {
 			port = DEFAULT_PORT
 		}
 	}
-	bot := &chatbot.Chatbot{}
-	handlers.AddHandler("chatbot_send", bot.GotMessage)
 	http.HandleFunc("/ws", handleWs)
 	http.HandleFunc("/", helloworld)
 	log.Printf("Starting app on port %+v\n", port)

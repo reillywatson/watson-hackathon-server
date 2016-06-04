@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type req struct {
+	MessageType string                 `json:"message_type"`
+	Info        map[string]interface{} `json:"info"`
+}
+
 func main() {
 	host := "localhost:8080"
 	if len(os.Args) > 1 {
@@ -36,7 +41,31 @@ func main() {
 			fmt.Println(string(msg))
 		}
 	}()
+	ws.WriteMessage(websocket.TextMessage, []byte(`{"message_type":"chatbot_init"}`))
+	var conv req
+	ws.ReadJSON(&conv)
+	go func() {
+		for {
+			var resp map[string]interface{}
+			err := ws.ReadJSON(&resp)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(resp)
+		}
+	}()
+	convId := conv.Info["id"].(string)
+	fmt.Println("ID:", convId)
 	for scanner.Scan() {
-		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"message_type":"chatbot_send","info":{"message":"%s"}}`, scanner.Text())))
+		msg := req{
+			MessageType: "chatbot_send",
+			Info: map[string]interface{}{
+				"conversation_id": convId,
+				"message":         scanner.Text(),
+			},
+		}
+		fmt.Println("Writing:", msg)
+		ws.WriteJSON(&msg)
 	}
 }

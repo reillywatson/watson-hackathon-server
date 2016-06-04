@@ -8,6 +8,8 @@ var NotFound = errors.New("No handler found")
 
 type Socket interface {
 	Send(msg interface{}) error
+	Reply(msgType string, info map[string]interface{}) error
+	Error(msg string) error
 }
 
 type handlerFn func(Socket, map[string]interface{}) error
@@ -24,8 +26,4 @@ func CallHandler(s Socket, msgType string, info map[string]interface{}) error {
 		return h(s, info)
 	}
 	return NotFound
-}
-
-func Reply(s Socket, msgType string, info map[string]interface{}) error {
-	return s.Send(map[string]interface{}{"message_type": msgType, "info": info})
 }
