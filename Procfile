@@ -1,1 +1,1 @@
-web: goworkout
+web: chatbot

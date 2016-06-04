@@ -1,5 +1,5 @@
 {
-	"ImportPath": "hackathon",
+	"ImportPath": "github.com/reillywatson/watson-hackathon-server",
 	"GoVersion": "go1.6.2",
 	"GodepVersion": "v60",
 	"Packages": [
@@ -8,6 +8,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/gorilla/websocket",
+			"Comment": "v1.0.0-11-g3ddc984",
 			"Rev": "3ddc98405808dc90b76f43a2eddca8f12e244e2b"
 		}
 	]

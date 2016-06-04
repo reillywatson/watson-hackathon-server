@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/reillywatson/watson-hackathon-server/handlers"
+	"github.com/reillywatson/watson-hackathon-server/handlers/chatbot"
 	"log"
 	"net/http"
 	"os"
@@ -17,24 +19,12 @@ const (
 
 const pongWait = time.Second * 60
 
-type handlerFn func(Socket, map[string]interface{}) error
-
-var handlers = map[string]handlerFn{}
-
-func addHandler(msgType string, handler handlerFn) {
-	handlers[msgType] = handler
-}
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-type Socket interface {
-	Send(msg interface{}) error
 }
 
 type WSSocket websocket.Conn
@@ -48,12 +38,8 @@ type request struct {
 	MessageType string                 `json:"message_type"`
 }
 
-func invalidMessage(s Socket, r request) {
+func invalidMessage(s handlers.Socket, r request) {
 	fmt.Println("Invalid message:", r)
-}
-
-func reply(s Socket, msgType string, info map[string]interface{}) error {
-	return s.Send(map[string]interface{}{"message_type": msgType, "info": info})
 }
 
 func helloworld(w http.ResponseWriter, req *http.Request) {
@@ -79,12 +65,7 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 			fmt.Println("socket err:", err)
 			break
 		}
-		handler, ok := handlers[message.MessageType]
-		if !ok {
-			invalidMessage(socket, message)
-			continue
-		}
-		handler(socket, message.Info)
+		handlers.CallHandler(socket, message.MessageType, message.Info)
 	}
 }
 
@@ -101,8 +82,8 @@ func main() {
 			port = DEFAULT_PORT
 		}
 	}
-	bot := &Chatbot{}
-	addHandler("chatbot_send", bot.GotMessage)
+	bot := &chatbot.Chatbot{}
+	handlers.AddHandler("chatbot_send", bot.GotMessage)
 	http.HandleFunc("/ws", handleWs)
 	http.HandleFunc("/", helloworld)
 	log.Printf("Starting app on port %+v\n", port)
