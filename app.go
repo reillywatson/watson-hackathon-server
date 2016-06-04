@@ -89,6 +89,7 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	log.Printf("App starting!\n")
 	defer func() {
 		if r := recover(); r != nil {
 			log.Panicf("Panic: %v\n", r)
