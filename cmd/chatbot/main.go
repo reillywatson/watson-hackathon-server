@@ -71,6 +71,7 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 	socket := (*WSSocket)(ws)
 	defer ws.Close()
 	ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	handlers.NewSocket(socket)
 	for {
 		var message request
 		err = ws.ReadJSON(&message)

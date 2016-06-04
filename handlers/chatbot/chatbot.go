@@ -31,7 +31,7 @@ type Chatbot struct {
 
 func init() {
 	chatbot := Chatbot{Conversations: make(map[string]*Conversation)}
-	handlers.AddHandler("chatbot_init", chatbot.Init)
+	handlers.AddNewSocketHandler(chatbot.Init)
 	handlers.AddHandler("chatbot_send", chatbot.GotMessage)
 	handlers.AddHandler("chatbot_end", chatbot.End)
 	handlers.AddHandler("sensor", chatbot.Sensor)

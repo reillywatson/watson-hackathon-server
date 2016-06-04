@@ -30,20 +30,9 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Connected!")
-	scanner := bufio.NewScanner(os.Stdin)
-	go func() {
-		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				fmt.Println("Err:", err)
-				os.Exit(0)
-			}
-			fmt.Println(string(msg))
-		}
-	}()
-	ws.WriteMessage(websocket.TextMessage, []byte(`{"message_type":"chatbot_init"}`))
 	var conv req
 	ws.ReadJSON(&conv)
+	scanner := bufio.NewScanner(os.Stdin)
 	go func() {
 		for {
 			var resp map[string]interface{}
