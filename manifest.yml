@@ -6,4 +6,4 @@ applications:
   name: Workout
   host: Workout
   disk_quota: 1024M
-  buildpack: go_buildpack
+  buildpack: https://github.com/cloudfoundry/go-buildpack.git
