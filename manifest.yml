@@ -7,5 +7,3 @@ applications:
   host: Workout
   disk_quota: 1024M
   buildpack: go_buildpack
-  env:
-    GO15VENDOREXPERIMENT: 0
