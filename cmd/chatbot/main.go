@@ -77,7 +77,7 @@ func handleWs(w http.ResponseWriter, req *http.Request) {
 	for {
 		var message request
 		err = ws.ReadJSON(&message)
-		fmt.Println(message)
+		fmt.Println(util.ToJson(message))
 		if err != nil {
 			fmt.Println("socket err:", err)
 			return
