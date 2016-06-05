@@ -6,6 +6,8 @@ import (
 	"github.com/reillywatson/watson-hackathon-server/util"
 	"math/rand"
 	"regexp"
+	"sort"
+	"strings"
 	"text/template"
 )
 
@@ -39,6 +41,16 @@ type BotState struct {
 }
 
 func messageForClass(class string, state *BotState, vars map[string]interface{}) (string, *BotState) {
+	if class == "help" {
+		var topics []string
+		for k := range messagesByClass {
+			if k != "confused" {
+				topics = append(topics, k)
+			}
+		}
+		sort.Strings(topics)
+		return fmt.Sprintf("I know about the following topics: %s.", strings.Join(topics, ", ")), nil
+	}
 	msgs, ok := messagesByClass[class]
 	if !ok {
 		msgs = messagesByClass["confused"]
@@ -74,9 +86,6 @@ func messageForClass(class string, state *BotState, vars map[string]interface{})
 		case "max_pulse", "current_pulse":
 			return "We don't have any pulse information yet!", nil
 		}
-	}
-	if class == "Calories" {
-
 	}
 	t, err := template.New("letter").Parse(msg)
 	if err != nil {

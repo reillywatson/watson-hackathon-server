@@ -402,6 +402,8 @@ func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Mess
 	class := "confused"
 	if conv.BotState != nil {
 		class = conv.BotState.EndClass
+	} else if strings.ToLower(msg.Text) == "help" {
+		class = "help"
 	} else {
 		classes, err := watson.Classify(msg.Text)
 		if err != nil {
