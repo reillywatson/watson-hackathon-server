@@ -56,6 +56,17 @@ func (s SensorData) Min() float64 {
 	return min
 }
 
+func (s SensorData) Avg() float64 {
+	if len(s) == 0 {
+		return 0.0
+	}
+	sum := 0.0
+	for _, d := range s {
+		sum += d.Value
+	}
+	return sum / float64(len(s))
+}
+
 type byValue SensorData
 
 func (b byValue) Len() int           { return len(b) }
@@ -172,17 +183,20 @@ func (h HeartbeatLearner) SensorTypes() []string {
 
 func (h HeartbeatLearner) Learn(c *Conversation, data SensorData) LearnerState {
 	data = data.Since(time.Minute).RemoveOutliers()
-	min := data.Min()
 	max := data.Max()
-	if max == 0 || len(data) == 0 {
+	min := data.Min()
+	if data.Max() == 0 || len(data) == 0 {
 		return NoState
 	}
-	c.CustomData["current_pulse"] = data[len(data)-1].Value
+	current := data[len(data)-1].Value
+	c.CustomData["current_pulse"] = current
 	if max-min > 5 {
-		return HeartrateIncreasing
-	}
-	if max-min < -5 {
-		return HeartrateDecreasing
+		if current == max {
+			return HeartrateIncreasing
+		}
+		if current == min {
+			return HeartrateDecreasing
+		}
 	}
 	return NoState
 }
@@ -224,11 +238,12 @@ func (c *Chatbot) Sensor(s handlers.Socket, req map[string]interface{}) error {
 			conv.LearnerStates = append(conv.LearnerStates, state)
 		}
 		if state != conv.LearnerStates[i] {
+			conv.LearnerStates[i] = state
 			switch state {
 			case HeartrateIncreasing:
-				c.SendMessage(s, conv, "Your heart rate is going through the roof!")
+				c.SendMessage(s, conv, "Your heart rate is going through the roof!", map[string]interface{}{"vibrate": true})
 			case HeartrateDecreasing:
-				c.SendMessage(s, conv, "Your heart rate is dropping like a rock, better get to work!")
+				c.SendMessage(s, conv, "Your heart rate is dropping like a rock, better get to work!", map[string]interface{}{"vibrate": true})
 			}
 		}
 	}
@@ -276,7 +291,7 @@ func (c *Chatbot) GotMessage(s handlers.Socket, req map[string]interface{}) erro
 	return c.ProcessMessage(s, conversation, msg)
 }
 
-func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, text string) error {
+func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, text string, payload map[string]interface{}) error {
 	msg := Message{
 		Id:        util.NewId(),
 		Text:      text,
@@ -284,10 +299,15 @@ func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, tex
 		Timestamp: time.Now(),
 	}
 	conversation.Messages = append(conversation.Messages, msg)
-	return s.Reply("chatbot_receive", util.ToMap(msg))
+	reply := util.ToMap(msg)
+	for k, v := range payload {
+		reply[k] = v
+	}
+	return s.Reply("chatbot_receive", reply)
 }
 
 func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Message) error {
+	fmt.Println("CUSTOM DATA:", util.ToJson(conv.CustomData))
 	conv.Messages = append(conv.Messages, msg)
 	classes, err := watson.Classify(msg.Text)
 	if err != nil {
@@ -304,8 +324,8 @@ func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Mess
 		} else if text == "male" {
 			conv.CustomData["gender"] = "male"
 		} else {
-			return c.SendMessage(s, conv, "I didn't understand that. Are you male or female?")
+			return c.SendMessage(s, conv, "I didn't understand that. Are you male or female?", nil)
 		}
 	}
-	return c.SendMessage(s, conv, messageForClass(class, conv.CustomData))
+	return c.SendMessage(s, conv, messageForClass(class, conv.CustomData), nil)
 }

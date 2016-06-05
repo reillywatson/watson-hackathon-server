@@ -1,12 +1,14 @@
 package chatbot
 
 import (
+	"fmt"
+	"github.com/reillywatson/watson-hackathon-server/util"
 	"testing"
 )
 
 type reply struct {
-	msgType string
-	info    map[string]interface{}
+	MsgType string
+	Info    map[string]interface{}
 }
 
 type TestSocket struct {
@@ -41,11 +43,28 @@ func TestSensor(t *testing.T) {
 	c.Sensor(s, map[string]interface{}{
 		"conversation_id": conversationId,
 		"type":            "heartbeat",
-		"value":           75.0,
+		"value":           70.0,
 	})
+	c.Sensor(s, map[string]interface{}{
+		"conversation_id": conversationId,
+		"type":            "heartbeat",
+		"value":           76.0,
+	})
+	c.Sensor(s, map[string]interface{}{
+		"conversation_id": conversationId,
+		"type":            "heartbeat",
+		"value":           76.0,
+	})
+	c.Sensor(s, map[string]interface{}{
+		"conversation_id": conversationId,
+		"type":            "heartbeat",
+		"value":           70.0,
+	})
+
+	fmt.Println("GOT:", util.ToJson(s.got))
 }
 
-func TestSend(t *testing.T) {
+func XTestSend(t *testing.T) {
 	c := Chatbot{Conversations: map[string]*Conversation{}}
 	s := &TestSocket{}
 	c.Init(s, nil)
@@ -67,7 +86,7 @@ func TestSend(t *testing.T) {
 	if len(s.got) != 2 {
 		t.Fatal("Got nothing!")
 	}
-	resp, _ := s.got[1].info["message"].(string)
+	resp, _ := s.got[1].Info["message"].(string)
 	if resp != "Your current heart rate is 70 BPM" {
 		t.Errorf("Got response: %v", s.got[1])
 	}

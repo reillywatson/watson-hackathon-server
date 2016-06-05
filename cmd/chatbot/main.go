@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DEFAULT_PORT = "8080"
+	DEFAULT_PORT = "8380"
 )
 
 const pongWait = time.Second * 60

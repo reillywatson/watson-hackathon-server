@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -47,12 +48,17 @@ func main() {
 	convId := conv.Info["id"].(string)
 	fmt.Println("ID:", convId)
 	for scanner.Scan() {
+		parts := strings.SplitN(scanner.Text(), " ", 2)
+		var info map[string]interface{}
+		err := json.Unmarshal([]byte(parts[1]), &info)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		info["conversation_id"] = convId
 		msg := req{
-			MessageType: "chatbot_send",
-			Info: map[string]interface{}{
-				"conversation_id": convId,
-				"message":         scanner.Text(),
-			},
+			MessageType: parts[0],
+			Info:        info,
 		}
 		fmt.Println("Writing:", msg)
 		ws.WriteJSON(&msg)
