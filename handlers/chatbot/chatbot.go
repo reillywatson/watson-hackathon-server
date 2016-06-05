@@ -318,7 +318,7 @@ func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Mess
 		log.Printf("Error classifying: %v", err)
 	}
 	class := "confused"
-	if len(classes) > 0 && classes[0].Confidence > 0.8 {
+	if len(classes) > 0 && classes[0].Confidence > 0.5 {
 		class = classes[0].Name
 	}
 	if class == "gender" {
