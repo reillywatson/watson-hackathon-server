@@ -190,6 +190,10 @@ func (h HeartbeatLearner) Learn(c *Conversation, data SensorData) LearnerState {
 	}
 	current := data[len(data)-1].Value
 	c.CustomData["current_pulse"] = current
+	allTimeMax, _ := c.CustomData["max_pulse"].(float64)
+	if current > allTimeMax {
+		c.CustomData["max_pulse"] = current
+	}
 	if max-min > 5 {
 		if current == max {
 			return HeartrateIncreasing
