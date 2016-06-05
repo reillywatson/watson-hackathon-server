@@ -49,3 +49,14 @@ func ToStruct(in interface{}, out interface{}) {
 	}
 	return
 }
+
+func ToJson(in interface{}) (res string) {
+	if in == nil {
+		return ""
+	}
+	bts, err := json.MarshalIndent(in, "", "    ")
+	if err != nil {
+		log.Panicf("Json marshal error: %v", err.Error())
+	}
+	return string(bts)
+}

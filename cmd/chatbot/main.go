@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/reillywatson/watson-hackathon-server/handlers"
 	_ "github.com/reillywatson/watson-hackathon-server/handlers/chatbot"
+	"github.com/reillywatson/watson-hackathon-server/util"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +31,7 @@ var upgrader = websocket.Upgrader{
 type WSSocket websocket.Conn
 
 func (s *WSSocket) Send(msg interface{}) error {
+	log.Printf("%v\n", util.ToJson(msg))
 	return (*websocket.Conn)(s).WriteJSON(msg)
 }
 
