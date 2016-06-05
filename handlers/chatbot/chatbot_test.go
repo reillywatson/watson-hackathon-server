@@ -10,12 +10,10 @@ type reply struct {
 }
 
 type TestSocket struct {
-	got  []reply
-	sent []interface{}
+	got []reply
 }
 
 func (s *TestSocket) Send(msg interface{}) error {
-	s.sent = append(s.sent, msg)
 	return nil
 }
 func (s *TestSocket) Reply(msgType string, info map[string]interface{}) error {
@@ -45,4 +43,32 @@ func TestSensor(t *testing.T) {
 		"type":            "heartbeat",
 		"value":           75.0,
 	})
+}
+
+func TestSend(t *testing.T) {
+	c := Chatbot{Conversations: map[string]*Conversation{}}
+	s := &TestSocket{}
+	c.Init(s, nil)
+	conversationId := ""
+	for k := range c.Conversations {
+		conversationId = k
+		break
+	}
+	c.Sensor(s, map[string]interface{}{
+		"conversation_id": conversationId,
+		"type":            "heartbeat",
+		"value":           70.0,
+	})
+
+	c.GotMessage(s, map[string]interface{}{
+		"conversation_id": conversationId,
+		"message":         "What's my heart rate?",
+	})
+	if len(s.got) != 2 {
+		t.Fatal("Got nothing!")
+	}
+	resp, _ := s.got[1].info["message"].(string)
+	if resp != "Your current heart rate is 70 BPM" {
+		t.Errorf("Got response: %v", s.got[1])
+	}
 }

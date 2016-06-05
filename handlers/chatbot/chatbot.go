@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/reillywatson/watson-hackathon-server/handlers"
 	"github.com/reillywatson/watson-hackathon-server/util"
+	"github.com/reillywatson/watson-hackathon-server/watson"
+	"log"
 	"math"
 	"sort"
 	"time"
@@ -16,15 +18,16 @@ const MaxDatapoints = 50000
 type Message struct {
 	Id        string    `json:"id"`
 	Sender    string    `json:"sender"`
-	Text      string    `json:"text"`
+	Text      string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
 type Conversation struct {
-	Id            string         `json:"id"`
-	Messages      []Message      `json:"messages"`
-	Sensors       SensorData     `json:"sensors"`
-	LearnerStates []LearnerState `json:"learner_states"`
+	Id            string                 `json:"id"`
+	Messages      []Message              `json:"messages"`
+	Sensors       SensorData             `json:"sensors"`
+	LearnerStates []LearnerState         `json:"learner_states"`
+	CustomData    map[string]interface{} `json:"custom_data"`
 }
 
 type SensorData []Datapoint
@@ -107,6 +110,19 @@ func (s SensorData) Since(dur time.Duration) SensorData {
 	return result
 }
 
+func (s SensorData) ByTypes(types []string) SensorData {
+	var result SensorData
+	for _, d := range s {
+		for _, t := range types {
+			if d.Type == t {
+				result = append(result, d)
+				break
+			}
+		}
+	}
+	return result
+}
+
 type Datapoint struct {
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
@@ -135,7 +151,7 @@ func (c *Chatbot) GetConversation(id string) (*Conversation, error) {
 
 type Learner interface {
 	SensorTypes() []string
-	Learn(data SensorData) LearnerState
+	Learn(c *Conversation, data SensorData) LearnerState
 }
 
 type LearnerState int
@@ -153,13 +169,14 @@ func (h HeartbeatLearner) SensorTypes() []string {
 	return []string{"heartbeat"}
 }
 
-func (h HeartbeatLearner) Learn(data SensorData) LearnerState {
+func (h HeartbeatLearner) Learn(c *Conversation, data SensorData) LearnerState {
 	data = data.Since(time.Minute).RemoveOutliers()
 	min := data.Min()
 	max := data.Max()
-	if max == 0 || len(data) < 5 {
+	if max == 0 || len(data) == 0 {
 		return NoState
 	}
+	c.CustomData["current_pulse"] = data[len(data)-1].Value
 	if max-min > 5 {
 		return HeartrateIncreasing
 	}
@@ -180,7 +197,7 @@ func (a AccelerometerLearner) SensorTypes() []string {
 	return []string{"accelerometer", "linear_acceleration"}
 }
 
-func (a AccelerometerLearner) Learn(data SensorData) LearnerState {
+func (a AccelerometerLearner) Learn(c *Conversation, data SensorData) LearnerState {
 	return NoState
 }
 
@@ -191,19 +208,17 @@ func (c *Chatbot) Sensor(s handlers.Socket, req map[string]interface{}) error {
 		Echo           bool
 	}
 	util.ToStruct(req, &info)
+	info.Datapoint.Timestamp = time.Now()
 	conv, err := c.GetConversation(info.ConversationId)
 	if err != nil {
 		return err
 	}
 	conv.Sensors = append(conv.Sensors, info.Datapoint)
-	if info.Echo {
-		return s.Reply("got_sensor", req)
-	}
 	if len(conv.Sensors) > MaxDatapoints {
 		conv.Sensors = conv.Sensors[MaxDatapoints:]
 	}
 	for i, learner := range learners {
-		state := learner.Learn(conv.Sensors)
+		state := learner.Learn(conv, conv.Sensors.ByTypes(learner.SensorTypes()))
 		if len(conv.LearnerStates) <= i {
 			conv.LearnerStates = append(conv.LearnerStates, state)
 		}
@@ -216,12 +231,16 @@ func (c *Chatbot) Sensor(s handlers.Socket, req map[string]interface{}) error {
 			}
 		}
 	}
+	if info.Echo {
+		return s.Reply("got_sensor", req)
+	}
 	return nil
 }
 
 func (c *Chatbot) Init(s handlers.Socket, req map[string]interface{}) error {
 	conv := &Conversation{
-		Id: util.NewId(),
+		Id:         util.NewId(),
+		CustomData: map[string]interface{}{},
 	}
 	c.Conversations[conv.Id] = conv
 	return s.Reply("chatbot_initialized", util.ToMap(conv))
@@ -253,8 +272,7 @@ func (c *Chatbot) GotMessage(s handlers.Socket, req map[string]interface{}) erro
 		Sender:    SenderUser,
 		Timestamp: time.Now(),
 	}
-	conversation.Messages = append(conversation.Messages, msg)
-	return c.SendMessage(s, conversation, "hello world!")
+	return c.ProcessMessage(s, conversation, msg)
 }
 
 func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, text string) error {
@@ -265,7 +283,18 @@ func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, tex
 		Timestamp: time.Now(),
 	}
 	conversation.Messages = append(conversation.Messages, msg)
-	return s.Reply("chatbot_receive", map[string]interface{}{
-		"message": msg,
-	})
+	return s.Reply("chatbot_receive", util.ToMap(msg))
+}
+
+func (c *Chatbot) ProcessMessage(s handlers.Socket, conversation *Conversation, msg Message) error {
+	conversation.Messages = append(conversation.Messages, msg)
+	classes, err := watson.Classify(msg.Text)
+	if err != nil {
+		log.Printf("Error classifying: %v", err)
+	}
+	class := "confused"
+	if len(classes) > 0 && classes[0].Confidence > 0.8 {
+		class = classes[0].Name
+	}
+	return c.SendMessage(s, conversation, messageForClass(class, conversation.CustomData))
 }
