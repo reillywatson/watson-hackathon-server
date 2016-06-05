@@ -7,7 +7,9 @@ import (
 	"github.com/reillywatson/watson-hackathon-server/watson"
 	"log"
 	"math"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,6 +31,7 @@ type Conversation struct {
 	Sensors       SensorData             `json:"sensors"`
 	LearnerStates []LearnerState         `json:"learner_states"`
 	CustomData    map[string]interface{} `json:"custom_data"`
+	BotState      *BotState              `json:"bot_state"`
 }
 
 type SensorData []Datapoint
@@ -310,26 +313,120 @@ func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, tex
 	return s.Reply("chatbot_receive", reply)
 }
 
+func parseAge(s string) int {
+	s = regexp.MustCompile(`.*(\d+).*`).FindString(s)
+	fmt.Println("S:", s)
+	if s == "" {
+		return 0
+	}
+	asInt, err := strconv.Atoi(s)
+	if err == nil {
+		return asInt
+	}
+	return 0
+}
+func parseGender(s string) string {
+	if strings.Contains(s, "female") {
+		return "female"
+	}
+	if strings.Contains(s, "male") {
+		return "male"
+	}
+	return ""
+}
+func parseHeight(s string) int {
+	s = regexp.MustCompile(`.*(\d+).*`).FindString(s)
+	fmt.Println("S:", s)
+	if s == "" {
+		return 0
+	}
+	asInt, err := strconv.Atoi(s)
+	if err == nil {
+		return asInt
+	}
+	return 0
+}
+func parseWeight(s string) int {
+	s = regexp.MustCompile(`.*(\d+).*`).FindString(s)
+	fmt.Println("S:", s)
+	if s == "" {
+		return 0
+	}
+	asInt, err := strconv.Atoi(s)
+	if err == nil {
+		return asInt
+	}
+	return 0
+}
+
 func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Message) error {
-	fmt.Println("CUSTOM DATA:", util.ToJson(conv.CustomData))
-	conv.Messages = append(conv.Messages, msg)
-	classes, err := watson.Classify(msg.Text)
-	if err != nil {
-		log.Printf("Error classifying: %v", err)
-	}
-	class := "confused"
-	if len(classes) > 0 && classes[0].Confidence > 0.5 {
-		class = classes[0].Name
-	}
-	if class == "gender" {
+	fmt.Println("TEXT:", msg.Text)
+	if conv.BotState != nil {
 		text := strings.ToLower(msg.Text)
-		if text == "female" {
-			conv.CustomData["gender"] = "female"
-		} else if text == "male" {
-			conv.CustomData["gender"] = "male"
-		} else {
-			return c.SendMessage(s, conv, "I didn't understand that. Are you male or female?", nil)
+		fmt.Println("Needs:", conv.BotState.DataNeeded)
+		switch conv.BotState.DataNeeded[0] {
+		case "age":
+			age := parseAge(text)
+			if age == 0 {
+				return c.SendMessage(s, conv, "I'm sorry, I don't understand. What is your age?", nil)
+			}
+			conv.CustomData["age"] = age
+			conv.CustomData["target_pulse"] = 220 - age
+		case "gender":
+			gender := parseGender(text)
+			if gender == "" {
+				return c.SendMessage(s, conv, "I'm sorry, I don't understand. Are you male or female?", nil)
+			}
+			conv.CustomData["gender"] = gender
+		case "height":
+			height := parseHeight(text)
+			if height == 0 {
+				return c.SendMessage(s, conv, "I'm sorry, I don't understand. How tall are you?", nil)
+			}
+			conv.CustomData["height"] = height
+		case "weight":
+			weight := parseWeight(text)
+			if weight == 0 {
+				return c.SendMessage(s, conv, "I'm sorry, I don't understand. How much do you weigh?", nil)
+			}
+			conv.CustomData["weight"] = weight
+		default:
+			break
+		}
+		conv.BotState.DataNeeded = conv.BotState.DataNeeded[1:]
+	}
+	populateRMR(conv.CustomData)
+	fmt.Println("CUSTOM DATA:", util.ToJson(conv.CustomData))
+	fmt.Println("BOT STATE:", util.ToJson(conv.BotState))
+	conv.Messages = append(conv.Messages, msg)
+	class := "confused"
+	if conv.BotState != nil {
+		class = conv.BotState.EndClass
+	} else {
+		classes, err := watson.Classify(msg.Text)
+		if err != nil {
+			log.Printf("Error classifying: %v", err)
+		}
+		if len(classes) > 0 && classes[0].Confidence > 0.5 {
+			class = classes[0].Name
 		}
 	}
-	return c.SendMessage(s, conv, messageForClass(class, conv.CustomData), nil)
+	reply, botState := messageForClass(class, conv.BotState, conv.CustomData)
+	conv.BotState = botState
+	return c.SendMessage(s, conv, reply, nil)
+}
+
+func populateRMR(data map[string]interface{}) {
+	age, _ := data["age"].(int)
+	gender, _ := data["gender"].(string)
+	height, _ := data["height"].(int)
+	weight, _ := data["weight"].(int)
+	if age == 0 || gender == "" || height == 0 || weight == 0 {
+		return
+	}
+	if gender == "female" {
+		data["daily_calories"] = int(655.0 + (4.35 * float64(weight)) + (4.7 * float64(height)) - (4.7 * float64(age)))
+	} else {
+		data["daily_calories"] = int(66.0 + (6.23 * float64(weight)) + (12.7 * float64(height)) - (6.8 * float64(age)))
+	}
 }
