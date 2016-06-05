@@ -9,10 +9,6 @@ import (
 var messagesByClass = map[string][]string{
 	"confused":           {"I don't understand!", "I'm confused!", "I don't get it"},
 	"Current heart rate": {"Your current heart rate is {{.current_pulse}} BPM"},
-	"Overall heart rate": {"?"},
-	"Duration":           {"?"},
-	"Improvement":        {"?"},
-	"Daily Calories":     {"?"},
 }
 
 /*
@@ -42,6 +38,7 @@ func messageForClass(class string, vars map[string]interface{}) string {
 	}
 	msgs, ok := messagesByClass[class]
 	if !ok {
+		return fmt.Sprintf("No message found. Class:", class)
 		msgs = messagesByClass["confused"]
 	}
 
