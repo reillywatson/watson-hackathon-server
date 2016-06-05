@@ -42,11 +42,12 @@ func messageForClass(class string, vars map[string]interface{}) string {
 	}
 	msgs, ok := messagesByClass[class]
 	if !ok {
-		return fmt.Sprintf("No message found. Class:", class)
+		return fmt.Sprintf("No message found. Class: %v", class)
 		msgs = messagesByClass["confused"]
 	}
 
 	msg := msgs[rand.Intn(len(msgs))]
+
 	t, err := template.New("letter").Parse(msg)
 	if err != nil {
 		return msg
