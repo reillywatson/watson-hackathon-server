@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -286,8 +287,8 @@ func (c *Chatbot) SendMessage(s handlers.Socket, conversation *Conversation, tex
 	return s.Reply("chatbot_receive", util.ToMap(msg))
 }
 
-func (c *Chatbot) ProcessMessage(s handlers.Socket, conversation *Conversation, msg Message) error {
-	conversation.Messages = append(conversation.Messages, msg)
+func (c *Chatbot) ProcessMessage(s handlers.Socket, conv *Conversation, msg Message) error {
+	conv.Messages = append(conv.Messages, msg)
 	classes, err := watson.Classify(msg.Text)
 	if err != nil {
 		log.Printf("Error classifying: %v", err)
@@ -296,5 +297,15 @@ func (c *Chatbot) ProcessMessage(s handlers.Socket, conversation *Conversation, 
 	if len(classes) > 0 && classes[0].Confidence > 0.8 {
 		class = classes[0].Name
 	}
-	return c.SendMessage(s, conversation, messageForClass(class, conversation.CustomData))
+	if class == "gender" {
+		text := strings.ToLower(msg.Text)
+		if text == "female" {
+			conv.CustomData["gender"] = "female"
+		} else if text == "male" {
+			conv.CustomData["gender"] = "male"
+		} else {
+			return c.SendMessage(s, conv, "I didn't understand that. Are you male or female?")
+		}
+	}
+	return c.SendMessage(s, conv, messageForClass(class, conv.CustomData))
 }

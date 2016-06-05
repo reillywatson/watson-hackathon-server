@@ -5,20 +5,33 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 )
 
 var userName = "f6793223-7d28-446f-849f-373d81b2e504"
 var password = "pEntn2Vu6frX"
-var classifierId = "3a84dfx64-nlc-21511"
+var classifierId = "3a84dfx64-nlc-21515"
 
 type ClassificationResult struct {
 	Name       string  `json:"class_name"`
 	Confidence float64 `json:"confidence"`
 }
 
-//curl -G -u "f6793223-7d28-446f-849f-373d81b2e504":"pEntn2Vu6frX" "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/3a84dfx64-nlc-21511/classify" --data-urlencode "text=What's my heart rate?"
+type regexOverride struct {
+	Regex *regexp.Regexp
+	Class string
+}
+
+var regexOverrides = []regexOverride{
+	{regexp.MustCompile(`(fe)?male`), "gender"},
+}
 
 func Classify(text string) ([]ClassificationResult, error) {
+	for _, override := range regexOverrides {
+		if override.Regex.MatchString(text) {
+			return []ClassificationResult{{Name: override.Class, Confidence: 1.0}}, nil
+		}
+	}
 	client := http.Client{}
 	url, err := url.Parse(fmt.Sprintf("https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/%s/classify", classifierId))
 	if err != nil {
