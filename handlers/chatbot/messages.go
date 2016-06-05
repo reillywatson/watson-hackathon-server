@@ -31,12 +31,6 @@ var messagesByClass = map[string][]string{
 
 /*
 "Duration":       {"You have been doing it for {{.duration}}"},
-Calories	"""<if {{.gender}} == """"female"""" then <655 + (4.35 x {{.weight_in_pounds}}) + (4.7 x {{.height_in _inches}}) - (4.7 x {{.age}}) else <66 + (6.23 x {{.weight_in_pounds}}) + (12.7 x {{.height_in _inches}}) - (6.8 x {{.age}})"""
-//Calories	"<if {{.gender}} == ""female"" then <655 + (4.35 x {{.weight_in_pounds}}) + (4.7 x {{.height_in _inches}}) - (4.7 x {{.age}}) else <66 + (6.23 x {{.weight_in_pounds}}) + (12.7 x {{.height_in _inches}}) - (6.8 x {{.age}})"
-
-Overall heart rate	You recomended maximum heart rate is <220 - {{.age}}>
-Overall heart rate	Your target heart rate is {{.max_pulse}}
-Target heart rate	Your target heart rate is  {{.max_pulse}}
 */
 
 type BotState struct {
@@ -47,7 +41,6 @@ type BotState struct {
 func messageForClass(class string, state *BotState, vars map[string]interface{}) (string, *BotState) {
 	msgs, ok := messagesByClass[class]
 	if !ok {
-		return fmt.Sprintf("No message found. Class: %v", class), nil
 		msgs = messagesByClass["confused"]
 	}
 	msg := msgs[rand.Intn(len(msgs))]
