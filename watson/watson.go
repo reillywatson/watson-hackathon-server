@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 )
 
 var userName = "f6793223-7d28-446f-849f-373d81b2e504"
@@ -17,21 +16,7 @@ type ClassificationResult struct {
 	Confidence float64 `json:"confidence"`
 }
 
-type regexOverride struct {
-	Regex *regexp.Regexp
-	Class string
-}
-
-var regexOverrides = []regexOverride{
-	{regexp.MustCompile(`(fe)?male`), "gender"},
-}
-
 func Classify(text string) ([]ClassificationResult, error) {
-	for _, override := range regexOverrides {
-		if override.Regex.MatchString(text) {
-			return []ClassificationResult{{Name: override.Class, Confidence: 1.0}}, nil
-		}
-	}
 	client := http.Client{}
 	url, err := url.Parse(fmt.Sprintf("https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/%s/classify", classifierId))
 	if err != nil {
